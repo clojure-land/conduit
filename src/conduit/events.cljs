@@ -1,11 +1,16 @@
 (ns conduit.events
   (:require
+
+
    [conduit.db :refer [default-db set-user-ls remove-user-ls]]
    [re-frame.core :refer [reg-event-db reg-event-fx reg-fx inject-cofx trim-v after path debug]]
    [conduit.router :as router]
    [day8.re-frame.http-fx] ;; even if we don't use this require its existence will cause the :http-xhrio effect handler to self-register with re-frame
    [day8.re-frame.tracing :refer-macros [fn-traced]]
+
    [ajax.core :refer [json-request-format json-response-format]]
+
+
    [clojure.string :as str]
    [cljs-time.coerce :refer [to-long]]))
 
@@ -40,20 +45,33 @@
 
 (defn endpoint [& params]
   "Concat any params to api-url separated by /"
-  (str/join "/" (concat [api-url] params)))
+  (let [ep (str/join "/" (concat [api-url] params))]                          ;; BA-NOTES: Adding some print out for the endpoint value
+    (prn (str "endpoint: " ep))
+    ep))
 
 (defn auth-header [db]
   "Get user token and format for API authorization"
   (when-let [token (get-in db [:user :token])]
+    (prn (str "auth-token " token))
     [:Authorization (str "Token " token)]))
 
 (defn add-epoch [date coll]
   "Takes date identifier and adds :epoch (cljs-time.coerce/to-long) timestamp to coll"
-  (map (fn [item] (assoc item :epoch (to-long (date item)))) coll))
+  (map (fn [item]
+         (assoc item :epoch (to-long (date item)))
+         ) coll))
 
 (defn index-by [key coll]
   "Transform a coll to a map with a given key as a lookup value"
   (into {} (map (juxt key identity) (add-epoch :createdAt coll))))
+
+;;;;;;;;;;;
+; reg-fx
+; reg-event-fx
+; reg-event-db
+; inject-cofx
+; fn-traced
+
 
 (reg-fx
  :set-url
@@ -388,6 +406,7 @@
  ;; put into `:user` path, and not the entire `db`.
  ;; So, a path interceptor makes the event handler act more like clojure's `update-in`
  (fn-traced [{user :db} [{props :user}]]
+   (prn "evt: login-success")
             {:db (merge user props)
              :dispatch-n [[:complete-request :login]
                           [:get-feed-articles {:tag nil :author nil :offset 0 :limit 10}]
@@ -398,6 +417,8 @@
 (reg-event-fx                               ;; usage (dispatch [:register-user registration])
  :register-user                             ;; triggered when a users submits registration form
  (fn-traced [{:keys [db]} [_ registration]] ;; registration = {:username ... :email ... :password ...}
+   (prn "evt: register-user")
+
             {:db         (assoc-in db [:loading :register-user] true)
              :http-xhrio {:method          :post
                           :uri             (endpoint "users")                       ;; evaluates to "api/users"
@@ -422,6 +443,7 @@
  ;; put into `:user` path, and not the entire `db`.
  ;; So, a path interceptor makes the event handler act more like clojure's `update-in`
  (fn-traced [{user :db} [{props :user}]]
+   (prn "evt: register-user-success")
             {:db (merge user props)
              :dispatch-n [[:complete-request :register-user]
                           [:set-active-page {:page :home}]]}))
@@ -431,6 +453,8 @@
 (reg-event-fx                       ;; usage (dispatch [:update-user user])
  :update-user                       ;; triggered when a users updates settgins
  (fn-traced [{:keys [db]} [_ user]] ;; user = {:img ... :username ... :bio ... :email ... :password ...}
+   (prn "evt: update-user")
+
             {:db         (assoc-in db [:loading :update-user] true)
              :http-xhrio {:method          :put
                           :uri             (endpoint "user")                        ;; evaluates to "api/user"

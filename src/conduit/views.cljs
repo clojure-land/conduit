@@ -431,13 +431,16 @@
 (defn article
   []
   (let [default {:body ""}
-        comment (reagent/atom default)
-        post-comment (fn [event comment default]
+        comment (reagent/atom default)                                              ;; NOTES-BA: Bound outside of the Fn[]
+        post-comment (fn [event comment default]                                    ;;; WHY IS THIS DEFINED AS AN ANON-FN WITHIN THE LET!??!!?
+                                                                                              ;; DOES THIS MATTER?
+                                                                                              ;; IS THIS CRITICAL?
+                                                                                              ;; WOULD A DIFFERANT RESULT OCCUR IF IT WAS JUST A FUNCTION?
                       (.preventDefault event)
                       (dispatch [:post-comment {:body (get @comment :body)}])
-                      (reset! comment default))]
+                      (reset! comment default))]                                              ;; AND, HERE IS A RESET!!!
     (fn []
-      (let [active-article @(subscribe [:active-article])
+      (let [active-article @(subscribe [:active-article])                           ;; NOTES-BA sub within handler
             user           @(subscribe [:user])
             comments       @(subscribe [:comments])
             errors         @(subscribe [:errors])
@@ -445,26 +448,26 @@
         [:div.article-page
          [:div.banner
           [:div.container
-           [:h1 (:title active-article)]
-           [article-meta active-article]]] ;; defined in Helpers section
+           [:h1 (:title active-article)]                                            ;; NOTES-BA ratom ref'd (dereffed prev)
+           [article-meta active-article]]] ;; defined in Helpers section            ;; NOTES-BA ratom ref  (dereffed prev)
          [:div.container.page
           [:div.row.article-content
            [:div.col-md-12
-            [:p (:body active-article)]]]
-          [tags-list (:tagList active-article)] ;; defined in Helpers section
+            [:p (:body active-article)]]]                                           ;; NOTES-BA ratom ref  (dereffed prev)
+          [tags-list (:tagList active-article)] ;; defined in Helpers section       ;; NOTES-BA ratom ref  (dereffed prev)
           [:hr]
           [:div.article-actions
-           [article-meta active-article]] ;; defined in Helpers section
+           [article-meta active-article]] ;; defined in Helpers section             ;; NOTES-BA ratom ref  (dereffed prev)
           [:div.row
            [:div.col-xs-12.col-md-8.offset-md-2
-            (when (:comments errors)
-              [errors-list (:comments errors)]) ;; defined in Helpers section
-            (if-not (empty? user)
+            (when (:comments errors)                                                 ;; NOTES-BA ratom ref  (dereffed prev)
+              [errors-list (:comments errors)]) ;; defined in Helpers section        ;; NOTES-BA ratom ref  (dereffed prev)
+            (if-not (empty? user)                                                    ;; NOTES-BA ratom ref  (dereffed prev)
               [:form.card.comment-form
                [:div.card-block
                 [:textarea.form-control {:placeholder "Write a comment..."
                                          :rows        "3"
-                                         :value       (:body @comment)
+                                         :value       (:body @comment)                ;; NOTES-BA ratom ref  (ACTUAL DEREF -- WITHIN HANDLER)
                                          :on-change   #(swap! comment assoc :body (-> % .-target .-value))}]]
                [:div.card-footer
                 [:img.comment-author-img {:src (:image user)}]
